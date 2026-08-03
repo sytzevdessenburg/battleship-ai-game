@@ -69,6 +69,42 @@ describe('placeShip', () => {
     expect(board.ships[0].indices).toEqual([toIndex(8, 0), toIndex(9, 0)])
   })
 
+  it('accepts a horizontal carrier that ends exactly at the right edge', () => {
+    const board = place(createBoard(), 'carrier', 0, 5, 'horizontal')
+    expect(board.ships[0].indices).toEqual([
+      toIndex(0, 5),
+      toIndex(0, 6),
+      toIndex(0, 7),
+      toIndex(0, 8),
+      toIndex(0, 9),
+    ])
+    expect(board.ships[0].indices.map(toCoord)).toEqual([
+      { row: 0, col: 5 },
+      { row: 0, col: 6 },
+      { row: 0, col: 7 },
+      { row: 0, col: 8 },
+      { row: 0, col: 9 },
+    ])
+  })
+
+  it('accepts a vertical carrier that ends exactly at the bottom edge', () => {
+    const board = place(createBoard(), 'carrier', 5, 0, 'vertical')
+    expect(board.ships[0].indices).toEqual([
+      toIndex(5, 0),
+      toIndex(6, 0),
+      toIndex(7, 0),
+      toIndex(8, 0),
+      toIndex(9, 0),
+    ])
+    expect(board.ships[0].indices.map(toCoord)).toEqual([
+      { row: 5, col: 0 },
+      { row: 6, col: 0 },
+      { row: 7, col: 0 },
+      { row: 8, col: 0 },
+      { row: 9, col: 0 },
+    ])
+  })
+
   it('rejects horizontal placement that would wrap across the row edge', () => {
     const result = placeShip(createBoard(), 'carrier', 0, 7, 'horizontal')
     expect(result).toEqual({ ok: false, error: 'out-of-bounds' })
