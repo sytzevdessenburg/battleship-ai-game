@@ -129,6 +129,21 @@ describe('sinking', () => {
     expect(state.mode).toBe('target')
   })
 
+  it('clears every cell of a sunk ship when the unresolved hits form an L', () => {
+    const state = createAIState()
+    // Cruiser at (4,1)-(4,3) and a destroyer at (3,4)-(4,4) meeting at a corner,
+    // so the unresolved hits are an L and no collinear run spans the cruiser.
+    recordResult(state, toIndex(4, 2), 'hit')
+    recordResult(state, toIndex(4, 3), 'hit')
+    recordResult(state, toIndex(3, 4), 'hit')
+    recordResult(state, toIndex(4, 4), 'sunk', 'destroyer')
+    recordResult(state, toIndex(4, 1), 'sunk', 'cruiser')
+
+    expect(state.unresolvedHits).not.toContain(toIndex(4, 1))
+    expect(state.unresolvedHits).not.toContain(toIndex(4, 2))
+    expect(state.unresolvedHits).not.toContain(toIndex(4, 3))
+  })
+
   it('attributes the correct window when the hit run is longer than the sunk ship', () => {
     const state = createAIState()
     // Cruiser at (0,0)-(0,2), submarine at (0,3)-(0,5).
