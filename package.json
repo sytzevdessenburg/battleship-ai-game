@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "sim": "tsx src/engine/simulate.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
@@ -26,6 +27,7 @@
     "jsdom": "^30.0.1",
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.5",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.10"
