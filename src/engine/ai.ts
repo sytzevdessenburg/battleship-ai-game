@@ -7,6 +7,8 @@ export type Axis = 'row' | 'col'
 export interface AIState {
   /** Every cell the AI has fired at, in order. */
   shots: number[]
+  /** Every cell that returned a hit, in order, including cells already attributed. */
+  hits: number[]
   /** Cells that returned 'hit' and are not yet attributed to a sunk ship. */
   unresolvedHits: number[]
   /** Pending candidate cells while in target mode, highest priority first. */
@@ -17,7 +19,7 @@ export interface AIState {
 }
 
 export function createAIState(): AIState {
-  return { shots: [], unresolvedHits: [], targetQueue: [], sunkShips: [], mode: 'hunt' }
+  return { shots: [], hits: [], unresolvedHits: [], targetQueue: [], sunkShips: [], mode: 'hunt' }
 }
 
 function neighbors(index: number): number[] {
@@ -127,36 +129,54 @@ export function nextShot(state: AIState, random: () => number = Math.random): nu
  * Cells the sunk ship occupied, inferred from the AI's own unresolved hits: a
  * collinear window of length `length` through the killing shot.
  *
- * A run of unresolved hits can be longer than the ship that just sank, so several
- * windows qualify. The oldest hits are preferred: the ship that sinks is the one the
- * AI has been working on longest, while newer hits at the far end of the run belong to
- * a neighbouring ship the AI has only just bumped into.
+ * A run of hits can be longer than the ship that just sank, so several windows qualify.
+ * Windows are ranked on two keys:
+ *
+ * 1. A run whose length equals the ship's length is preferred over a longer run: a run
+ *    longer than the ship spans a neighbouring ship, so the shorter run is the better
+ *    explanation. This is what separates the two axes when the killing shot sits at the
+ *    corner of a perpendicular pair of runs.
+ * 2. Within an axis, the oldest hits win: the ship that sinks is the one the AI has been
+ *    working on longest, while newer hits at the far end belong to a ship it has only
+ *    just bumped into.
+ *
+ * A sunk ship has necessarily been hit on every one of its cells, so the search falls
+ * back to the AI's full hit history when the unresolved hits alone no longer contain a
+ * long enough run - which happens when an earlier sink took a cell of this ship. That
+ * re-attributes the cell and stops hits from being stranded in `unresolvedHits`.
  */
 function inferSunkCells(state: AIState, index: number, length: number): number[] {
-  const hits = state.unresolvedHits
   const shotOrder = new Map(state.shots.map((shot, order) => [shot, order]))
   const age = (cell: number) => shotOrder.get(cell) ?? Number.MAX_SAFE_INTEGER
 
-  let best: number[] | null = null
-  let bestScore = Number.POSITIVE_INFINITY
-  for (const axis of ['row', 'col'] as Axis[]) {
-    for (const run of collinearRuns(hits, axis)) {
-      if (!run.includes(index) || run.length < length) continue
-      for (let start = 0; start + length <= run.length; start += 1) {
-        const window = run.slice(start, start + length)
-        if (!window.includes(index)) continue
-        const score = window
-          .filter((cell) => cell !== index)
-          .reduce((total, cell) => total + age(cell), 0)
-        if (score < bestScore) {
-          best = window
-          bestScore = score
+  const search = (hits: number[]): number[] | null => {
+    let best: number[] | null = null
+    let bestScore: [number, number] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]
+    for (const axis of ['row', 'col'] as Axis[]) {
+      for (const run of collinearRuns(hits, axis)) {
+        if (!run.includes(index) || run.length < length) continue
+        for (let start = 0; start + length <= run.length; start += 1) {
+          const window = run.slice(start, start + length)
+          if (!window.includes(index)) continue
+          const ageScore = window
+            .filter((cell) => cell !== index)
+            .reduce((total, cell) => total + age(cell), 0)
+          const score: [number, number] = [run.length > length ? 1 : 0, ageScore]
+          if (score[0] < bestScore[0] || (score[0] === bestScore[0] && score[1] < bestScore[1])) {
+            best = window
+            bestScore = score
+          }
         }
       }
     }
+    return best
   }
-  if (best) return best
-  return length === 1 ? [index] : hits.includes(index) ? [index] : []
+
+  const fromUnresolved = search(state.unresolvedHits)
+  if (fromUnresolved) return fromUnresolved
+  const fromHistory = search([...new Set([...state.hits, index])])
+  if (fromHistory) return fromHistory
+  return [index]
 }
 
 export function recordResult(
@@ -168,10 +188,12 @@ export function recordResult(
   state.shots.push(index)
 
   if (result === 'hit') {
+    state.hits.push(index)
     state.unresolvedHits.push(index)
   } else if (result === 'sunk') {
     const spec = FLEET.find((ship) => ship.id === sunkShipId)
     if (!spec) throw new Error('recordResult: a sunk result requires the sunk ship id')
+    state.hits.push(index)
     state.unresolvedHits.push(index)
     state.sunkShips.push(spec.id)
     const sunkCells = inferSunkCells(state, index, spec.length)
