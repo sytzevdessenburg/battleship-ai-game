@@ -128,6 +128,21 @@ describe('sinking', () => {
     expect(state.unresolvedHits).toEqual([toIndex(5, 4)])
     expect(state.mode).toBe('target')
   })
+
+  it('attributes the correct window when the hit run is longer than the sunk ship', () => {
+    const state = createAIState()
+    // Cruiser at (0,0)-(0,2), submarine at (0,3)-(0,5).
+    recordResult(state, toIndex(0, 5), 'hit')
+    recordResult(state, toIndex(0, 4), 'hit')
+    recordResult(state, toIndex(0, 2), 'hit')
+    recordResult(state, toIndex(0, 1), 'hit')
+    recordResult(state, toIndex(0, 3), 'sunk', 'submarine')
+
+    expect(state.unresolvedHits).toContain(toIndex(0, 1))
+    expect(state.unresolvedHits).toContain(toIndex(0, 2))
+    expect(state.unresolvedHits).not.toContain(toIndex(0, 4))
+    expect(state.unresolvedHits).not.toContain(toIndex(0, 5))
+  })
 })
 
 describe('full game', () => {
