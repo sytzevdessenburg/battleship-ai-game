@@ -124,20 +124,38 @@ export function nextShot(state: AIState, random: () => number = Math.random): nu
 }
 
 /**
- * Cells the sunk ship occupied, inferred from the AI's own unresolved hits: the
- * collinear run of length `length` through the killing shot.
+ * Cells the sunk ship occupied, inferred from the AI's own unresolved hits: a
+ * collinear window of length `length` through the killing shot.
+ *
+ * A run of unresolved hits can be longer than the ship that just sank, so several
+ * windows qualify. The oldest hits are preferred: the ship that sinks is the one the
+ * AI has been working on longest, while newer hits at the far end of the run belong to
+ * a neighbouring ship the AI has only just bumped into.
  */
 function inferSunkCells(state: AIState, index: number, length: number): number[] {
   const hits = state.unresolvedHits
+  const shotOrder = new Map(state.shots.map((shot, order) => [shot, order]))
+  const age = (cell: number) => shotOrder.get(cell) ?? Number.MAX_SAFE_INTEGER
+
+  let best: number[] | null = null
+  let bestScore = Number.POSITIVE_INFINITY
   for (const axis of ['row', 'col'] as Axis[]) {
     for (const run of collinearRuns(hits, axis)) {
       if (!run.includes(index) || run.length < length) continue
       for (let start = 0; start + length <= run.length; start += 1) {
         const window = run.slice(start, start + length)
-        if (window.includes(index)) return window
+        if (!window.includes(index)) continue
+        const score = window
+          .filter((cell) => cell !== index)
+          .reduce((total, cell) => total + age(cell), 0)
+        if (score < bestScore) {
+          best = window
+          bestScore = score
+        }
       }
     }
   }
+  if (best) return best
   return length === 1 ? [index] : hits.includes(index) ? [index] : []
 }
 
