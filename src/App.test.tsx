@@ -42,6 +42,30 @@ describe('App', () => {
     expect(screen.getByText(/your turn/i)).toBeInTheDocument()
   })
 
+  it('previews on the first tap and places on the second on a touch device', () => {
+    const matchMedia = vi.fn((query: string) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    vi.stubGlobal('matchMedia', matchMedia)
+
+    render(<App />)
+    const target = () => screen.getByRole('button', { name: 'Your fleet A1' })
+
+    fireEvent.click(target())
+    expect(screen.getByText(/place your carrier/i)).toBeInTheDocument()
+    expect(target()).toHaveAttribute('data-kind', 'water')
+    expect(target().className).toContain('ring-emerald-300')
+
+    fireEvent.click(target())
+    expect(target()).toHaveAttribute('data-kind', 'ship')
+    expect(screen.getByText(/place your battleship/i)).toBeInTheDocument()
+
+    vi.unstubAllGlobals()
+  })
+
   it('places a ship on the player board by clicking a cell', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Your fleet A1' }))

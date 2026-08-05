@@ -4,6 +4,7 @@ import type { Board } from './engine'
 import { createGameState, gameReducer, previewPlacement } from './game/state'
 import { BoardGrid } from './ui/BoardGrid'
 import { ShotLog } from './ui/ShotLog'
+import { useCoarsePointer } from './ui/useCoarsePointer'
 
 const AI_DELAY_MS = 500
 
@@ -34,12 +35,25 @@ function FleetStatus({ board, title }: { board: Board; title: string }) {
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createGameState)
   const [hovered, setHovered] = useState<number | null>(null)
+  /** Origin picked by a first tap on a touch device, confirmed by a second tap. */
+  const [selected, setSelected] = useState<number | null>(null)
+  const touch = useCoarsePointer()
 
   const placingShip = FLEET[state.placingIndex]
+  const origin = touch ? selected : hovered
   const preview =
-    state.phase === 'placement' && hovered !== null && placingShip
-      ? previewPlacement(state.playerBoard, hovered, placingShip.length, state.orientation)
+    state.phase === 'placement' && origin !== null && placingShip
+      ? previewPlacement(state.playerBoard, origin, placingShip.length, state.orientation)
       : null
+
+  const placeAt = (index: number) => {
+    if (touch && selected !== index) {
+      setSelected(index)
+      return
+    }
+    dispatch({ type: 'place', index })
+    setSelected(null)
+  }
 
   const aiTurn = state.phase === 'battle' && state.turn === 'ai'
 
@@ -51,7 +65,9 @@ function App() {
 
   const status =
     state.phase === 'placement'
-      ? `Place your ${placingShip?.id ?? ''} (${placingShip?.length ?? 0} cells)`
+      ? `Place your ${placingShip?.id ?? ''} (${placingShip?.length ?? 0} cells)${
+          touch ? ' — tap to preview, tap again to place' : ''
+        }`
       : state.phase === 'end'
         ? state.winner === 'player'
           ? 'You win — enemy fleet destroyed'
@@ -92,7 +108,10 @@ function App() {
             <button
               type="button"
               disabled={state.placingIndex === 0}
-              onClick={() => dispatch({ type: 'undo-placement' })}
+              onClick={() => {
+                setSelected(null)
+                dispatch({ type: 'undo-placement' })
+              }}
               className="rounded-lg border border-sky-700 px-4 py-2 text-sm font-medium text-sky-200 transition-colors hover:bg-sky-900 disabled:opacity-40"
             >
               Clear board
@@ -127,7 +146,7 @@ function App() {
               label="Your fleet"
               previewIndices={preview?.indices ?? []}
               previewValid={preview?.valid ?? true}
-              onCellClick={(index) => dispatch({ type: 'place', index })}
+              onCellClick={placeAt}
               onCellEnter={setHovered}
               onCellLeave={() => setHovered(null)}
             />
