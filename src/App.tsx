@@ -1,12 +1,7 @@
 import { useEffect, useReducer, useState } from 'react'
 import { FLEET, isSunk } from './engine'
 import type { Board } from './engine'
-import {
-  createGameState,
-  gameReducer,
-  isValidPreview,
-  previewIndices,
-} from './game/state'
+import { createGameState, gameReducer, previewPlacement } from './game/state'
 import { BoardGrid } from './ui/BoardGrid'
 import { ShotLog } from './ui/ShotLog'
 
@@ -43,9 +38,8 @@ function App() {
   const placingShip = FLEET[state.placingIndex]
   const preview =
     state.phase === 'placement' && hovered !== null && placingShip
-      ? previewIndices(hovered, placingShip.length, state.orientation)
+      ? previewPlacement(state.playerBoard, hovered, placingShip.length, state.orientation)
       : null
-  const previewValid = isValidPreview(state.playerBoard, preview)
 
   const aiTurn = state.phase === 'battle' && state.turn === 'ai'
 
@@ -131,8 +125,8 @@ function App() {
               revealShips
               interactive={state.phase === 'placement'}
               label="Your fleet"
-              previewIndices={preview ?? []}
-              previewValid={previewValid}
+              previewIndices={preview?.indices ?? []}
+              previewValid={preview?.valid ?? true}
               onCellClick={(index) => dispatch({ type: 'place', index })}
               onCellEnter={setHovered}
               onCellLeave={() => setHovered(null)}

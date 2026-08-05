@@ -6,6 +6,7 @@ import {
   gameReducer,
   isValidPreview,
   previewIndices,
+  previewPlacement,
 } from './state'
 import type { GameState } from './state'
 
@@ -58,6 +59,27 @@ describe('placement phase', () => {
     expect(previewIndices(toIndex(0, 7), 5, 'horizontal')).toBeNull()
     expect(isValidPreview(board, previewIndices(toIndex(0, 7), 5, 'horizontal'))).toBe(false)
     expect(isValidPreview(board, previewIndices(toIndex(0, 0), 5, 'horizontal'))).toBe(true)
+  })
+
+  it('outlines the on-board part of a ship that runs off the edge', () => {
+    const board = createBoard()
+    expect(previewPlacement(board, toIndex(2, 6), 5, 'horizontal')).toEqual({
+      indices: [toIndex(2, 6), toIndex(2, 7), toIndex(2, 8), toIndex(2, 9)],
+      valid: false,
+    })
+    expect(previewPlacement(board, toIndex(8, 3), 5, 'vertical')).toEqual({
+      indices: [toIndex(8, 3), toIndex(9, 3)],
+      valid: false,
+    })
+  })
+
+  it('marks an overlapping preview invalid but keeps the full outline', () => {
+    const placed = placeShip(createBoard(), 'destroyer', 0, 0, 'horizontal')
+    if (!placed.ok) throw new Error(placed.error)
+    expect(previewPlacement(placed.value, toIndex(0, 1), 3, 'horizontal')).toEqual({
+      indices: [toIndex(0, 1), toIndex(0, 2), toIndex(0, 3)],
+      valid: false,
+    })
   })
 })
 

@@ -102,6 +102,31 @@ export function isValidPreview(board: Board, indices: number[] | null): boolean 
   return indices !== null && indices.every((cell) => board.cells[cell].shipId === null)
 }
 
+export interface Preview {
+  /** The cells to outline: the whole ship, or the part of it still on the board. */
+  indices: number[]
+  valid: boolean
+}
+
+/**
+ * Hover outline for a placement. A ship running off the board is outlined on the
+ * cells it still covers so the hover reads as invalid rather than as nothing.
+ */
+export function previewPlacement(
+  board: Board,
+  index: number,
+  length: number,
+  orientation: Orientation,
+): Preview {
+  const indices = previewIndices(index, length, orientation)
+  if (indices) return { indices, valid: isValidPreview(board, indices) }
+
+  const { row, col } = toCoord(index)
+  const remaining =
+    orientation === 'horizontal' ? BOARD_SIZE - col : BOARD_SIZE - row
+  return { indices: previewIndices(index, remaining, orientation) ?? [index], valid: false }
+}
+
 function cloneAI(ai: AIState): AIState {
   return {
     shots: [...ai.shots],
