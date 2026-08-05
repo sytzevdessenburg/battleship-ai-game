@@ -51,6 +51,10 @@ function App() {
       setSelected(index)
       return
     }
+    const target = placingShip
+      ? previewPlacement(state.playerBoard, index, placingShip.length, state.orientation)
+      : null
+    if (!target?.valid) return
     dispatch({ type: 'place', index })
     setSelected(null)
   }

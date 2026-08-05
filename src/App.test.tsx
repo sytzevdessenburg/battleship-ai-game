@@ -63,6 +63,12 @@ describe('App', () => {
     expect(target()).toHaveAttribute('data-kind', 'ship')
     expect(screen.getByText(/place your battleship/i)).toBeInTheDocument()
 
+    const offBoard = () => screen.getByRole('button', { name: 'Your fleet H2' })
+    fireEvent.click(offBoard())
+    fireEvent.click(offBoard())
+    expect(offBoard()).toHaveAttribute('data-kind', 'water')
+    expect(offBoard().className).toContain('ring-rose-400')
+
     vi.unstubAllGlobals()
   })
 
